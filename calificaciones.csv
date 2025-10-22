@@ -1,1 +1,3 @@
-ID_Estudiante,Nombre,Materia,CalificaciÃ³n
+ID_Estudiante,Materia,Calificación
+1001,Base de Datos,19.0
+1001,Física,16.0
