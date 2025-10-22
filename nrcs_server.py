@@ -5,6 +5,7 @@ import os
 
 ARCHIVO_NRC = 'nrcs.csv'
 PUERTO = 12346
+HOST = 'localhost'
 
 def inicializar_nrcs():
     """Inicializa el archivo CSV de NRCs si no existe"""
@@ -12,7 +13,6 @@ def inicializar_nrcs():
         with open(ARCHIVO_NRC, 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerow(['NRC', 'Materia'])
-            # Agregar algunos NRCs de ejemplo
             nrcs_ejemplo = [
                 ['MAT101', 'Matemáticas Básicas'],
                 ['FIS101', 'Física General'],
@@ -26,10 +26,10 @@ def inicializar_nrcs():
 def buscar_nrc(nrc):
     """Busca un NRC en el archivo CSV"""
     try:
-        with open(ARCHIVO_NRC, 'r') as f:
+        with open(ARCHIVO_NRC, 'r', newline='') as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if row['NRC'] == nrc:
+                if row['NRC'].strip().upper() == nrc.strip().upper():
                     return {"status": "ok", "data": row}
         return {"status": "not_found", "mensaje": "NRC no encontrado"}
     except Exception as e:
@@ -38,7 +38,7 @@ def buscar_nrc(nrc):
 def listar_nrcs():
     """Lista todos los NRCs disponibles"""
     try:
-        with open(ARCHIVO_NRC, 'r') as f:
+        with open(ARCHIVO_NRC, 'r', newline='') as f:
             reader = csv.DictReader(f)
             data = list(reader)
         return {"status": "ok", "data": data}
@@ -46,9 +46,8 @@ def listar_nrcs():
         return {"status": "error", "mensaje": str(e)}
 
 def procesar_comando(comando):
-    """Procesa los comandos recibidos del cliente"""
     partes = comando.strip().split('|')
-    op = partes[0]
+    op = partes[0].strip()
     
     if op == 'BUSCAR_NRC' and len(partes) == 2:
         return buscar_nrc(partes[1])
@@ -58,31 +57,28 @@ def procesar_comando(comando):
         return {"status": "error", "mensaje": "Comando inválido"}
 
 def main():
-    """Función principal del servidor de NRCs"""
     inicializar_nrcs()
-    
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind(('localhost', PUERTO))
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind((HOST, PUERTO))
     server_socket.listen(5)
-    print(f"Servidor de NRCs escuchando en puerto {PUERTO}...")
+    print(f"Servidor de NRCs escuchando en {HOST}:{PUERTO}...")
     
     try:
         while True:
             client_socket, addr = server_socket.accept()
             print(f"Conexión aceptada desde {addr}")
-            
             try:
-                data = client_socket.recv(1024).decode('utf-8')
+                data = client_socket.recv(1024).decode('utf-8').strip()
                 if data:
                     print(f"Comando recibido: {data}")
                     respuesta = procesar_comando(data)
-                    client_socket.send(json.dumps(respuesta).encode('utf-8'))
+                    client_socket.sendall(json.dumps(respuesta).encode('utf-8'))
             except Exception as e:
                 print(f"Error en comunicación: {e}")
             finally:
                 client_socket.close()
                 print(f"Conexión con {addr} cerrada")
-                
     except KeyboardInterrupt:
         print("\nServidor de NRCs detenido.")
     finally:
